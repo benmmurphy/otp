@@ -121,19 +121,7 @@ create_self_signed_cert(Root, OpenSSLCmd, CAName, Cnf) ->
 	   " -keyout ", KeyFile, 
 	   " -out ", CertFile], 
     Env = [{"ROOTDIR", Root}],  
-    cmd(Cmd, Env),
-    fix_key_file(OpenSSLCmd, KeyFile).
-
-% openssl 1.0 generates key files in pkcs8 format by default and we don't handle this format
-fix_key_file(OpenSSLCmd, KeyFile) ->
-    KeyFileTmp = KeyFile ++ ".tmp",
-    Cmd = [OpenSSLCmd, " rsa",
-           " -in ",
-           KeyFile,
-           " -out ",
-           KeyFileTmp],
-    cmd(Cmd, []),
-    ok = file:rename(KeyFileTmp, KeyFile).
+    cmd(Cmd, Env).
 
 create_ca_dir(Root, CAName, Cnf) ->
     CARoot = filename:join([Root, CAName]),
@@ -151,8 +139,7 @@ create_req(Root, OpenSSLCmd, CnfFile, KeyFile, ReqFile) ->
 	   " -keyout ", KeyFile, 
 	   " -out ", ReqFile], 
     Env = [{"ROOTDIR", Root}], 
-    cmd(Cmd, Env),
-    fix_key_file(OpenSSLCmd, KeyFile).
+    cmd(Cmd, Env).
 
 sign_req(Root, OpenSSLCmd, CA, CertType, ReqFile, CertFile) ->
     CACnfFile = filename:join([Root, CA, "ca.cnf"]),
