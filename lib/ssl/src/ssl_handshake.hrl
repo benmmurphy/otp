@@ -98,7 +98,7 @@
 	  compression_methods, % compression_methods<1..2^8-1>,
 	  renegotiation_info,
 	  hash_signs,          % supported combinations of hashes/signature algos
-	  next_protocol_negotiation = undefined :: undefined | list(binary())
+	  next_protocol_negotiation = undefined :: undefined | [binary()]
 	 }).
 
 -record(server_hello, {
@@ -109,7 +109,7 @@
 	  compression_method, % compression_method
 	  renegotiation_info,
 	  hash_signs,          % supported combinations of hashes/signature algos
-	  next_protocol_negotiation = undefined :: undefined | list(binary())
+	  next_protocol_negotiation = undefined :: undefined | [binary()]
 	 }).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
