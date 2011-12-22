@@ -739,8 +739,8 @@ select_next_protocol({error, _Reason}, _NextProtocolSelector) ->
     ?ALERT_REC(?FATAL, ?HANDSHAKE_FAILURE);
 select_next_protocol(Protocols, NextProtocolSelector) ->
     case NextProtocolSelector(Protocols) of
-      Protocol when is_binary(Protocol), byte_size(Protocol) > 0 ->
-          Protocol;
+      {InPreferenceList, Protocol} = ProtocolPair when is_binary(Protocol), byte_size(Protocol) > 0, byte_size(Protocol) < 256, is_boolean(InPreferenceList) ->
+          ProtocolPair;
       _ ->
           ?ALERT_REC(?FATAL, ?INTERNAL_ERROR) % we are broken internally :( api presently stops this but we might let it happen in future
     end.

@@ -797,7 +797,7 @@ fun(OtpCert :: #'OTPCertificate'{}, Event :: {bad_cert, Reason :: atom()} |
       </desc>
     </func>
     <func>
-      <name>negotiated_next_protocol(Socket) -> {ok, Protocol} | {error, next_protocol_not_negotiated}</name>
+      <name>negotiated_next_protocol(Socket) -> {ok, negotiated | fallback, Protocol} | {error, next_protocol_not_negotiated}</name>
       <fsummary>Returns the Next Protocol negotiated.</fsummary>
       <type>
         <v>Socket = sslsocket()</v>
@@ -805,7 +805,9 @@ fun(OtpCert :: #'OTPCertificate'{}, Event :: {bad_cert, Reason :: atom()} |
       </type>
       <desc>
         <p>
-          Returns the Next Protocol negotiated.
+          Returns the Next Protocol negotiated. The server will always return either {ok, negotiated, Protocol} or 
+          {error, next_protocol_not_negotiated}. The client may return {ok, fallback, Protocol} when a protocol
+          has been selected which is not in the server's list of advertised protocols.
         </p>
       </desc>
     </func>

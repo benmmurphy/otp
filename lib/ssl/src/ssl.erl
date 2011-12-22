@@ -317,7 +317,7 @@ suite_definition(S) ->
     {KeyExchange, Cipher, Hash}.
 
 %%--------------------------------------------------------------------
--spec negotiated_next_protocol(#sslsocket{}) -> {ok, binary()} | {error, reason()}.
+-spec negotiated_next_protocol(#sslsocket{}) -> {ok, fallback | negotiated, binary()} | {error, reason()}.
 %%
 %% Description: Returns the next protocol that has been negotiated. If no
 %% protocol has been negotiated will return {error, next_protocol_not_negotiated}
@@ -906,8 +906,8 @@ make_next_protocol_selector({client, AllProtocols}) ->
 make_next_protocol_selector({client, AllProtocols, FallbackProtocol}) ->
     fun(AdvertisedProtocols) ->
         case detect(fun(PreferredProtocol) -> lists:member(PreferredProtocol, AdvertisedProtocols) end, AllProtocols) of
-            undefined -> FallbackProtocol;
-            PreferredProtocol -> PreferredProtocol
+            undefined -> {false, FallbackProtocol};
+            PreferredProtocol -> {true, PreferredProtocol}
         end
     end;
 make_next_protocol_selector({server, AllProtocols}) ->
@@ -915,8 +915,8 @@ make_next_protocol_selector({server, AllProtocols}) ->
 make_next_protocol_selector({server, AllProtocols, FallbackProtocol}) ->
     fun(AdvertisedProtocols) ->
         case detect(fun(PreferredProtocol) -> lists:member(PreferredProtocol, AllProtocols) end, AdvertisedProtocols) of
-            undefined -> FallbackProtocol;
-            PreferredProtocol -> PreferredProtocol
+            undefined -> {false, FallbackProtocol};
+            PreferredProtocol -> {true, PreferredProtocol}
         end
     end.
                                 
