@@ -1512,16 +1512,16 @@ request_client_cert(#state{ssl_options = #ssl_options{verify = verify_none}} =
 		    State) ->
     State.
 
-finalize_handshake(State, StateName) ->
-    ConnectionStates0 = cipher_protocol(State),
+finalize_handshake(State0, StateName) ->
+    ConnectionStates0 = cipher_protocol(State0),
 
     ConnectionStates =
         ssl_record:activate_pending_connection_state(ConnectionStates0,
                                                      write),
 
-    State1 = State#state{connection_states = ConnectionStates},
-    State2 = next_protocol(State1),
-    finished(State2, StateName).
+    State1 = State0#state{connection_states = ConnectionStates},
+    State = next_protocol(State1),
+    finished(State, StateName).
 
 
 next_protocol(#state{role = server} = State) ->
