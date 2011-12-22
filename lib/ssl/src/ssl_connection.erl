@@ -94,7 +94,8 @@
 	  terminated = false,  %
 	  allow_renegotiate = true,
           expecting_next_protocol_negotiation = false :: boolean(),
-          next_protocol = undefined :: undefined | binary()
+          next_protocol = undefined :: undefined | {boolean(), binary()}
+
 	 }).
 
 -define(DEFAULT_DIFFIE_HELLMAN_PARAMS, 
@@ -697,7 +698,9 @@ cipher(#finished{verify_data = Data} = Finished,
 % only allowed to send next_protocol message after change cipher spec & before finished message and it is not allowed
 % during renegotiation
 cipher(#next_protocol{selected_protocol = SelectedProtocol}, #state{role = server, expecting_next_protocol_negotiation = true} = State0) ->
-	{Record, State} = next_record(State0#state{next_protocol = SelectedProtocol}),
+  % we always set the overlapped boolean flag for next_protocol  to true and this means
+  % we always return negotiated instead of fallback in negotiated_next_protocol/1
+	{Record, State} = next_record(State0#state{next_protocol = {true, SelectedProtocol}}),
     next_state(cipher, cipher, Record, State);
 
 cipher(timeout, State) ->
@@ -856,8 +859,8 @@ handle_sync_event(sockname, _From, StateName,
 
 handle_sync_event(negotiated_next_protocol, _From, StateName, #state{next_protocol = undefined} = State) ->
     {reply, {error, next_protocol_not_negotiated}, StateName, State, get_timeout(State)};
-handle_sync_event(negotiated_next_protocol, _From, StateName, #state{next_protocol = NextProtocol} = State) ->
-    {reply, {ok, NextProtocol}, StateName, State, get_timeout(State)};
+handle_sync_event(negotiated_next_protocol, _From, StateName, #state{next_protocol = {IsOverlap, NextProtocol}} = State) ->
+    {reply, {ok, fallback_atom(IsOverlap), NextProtocol}, StateName, State, get_timeout(State)};
 handle_sync_event(peername, _From, StateName,
 		  #state{socket = Socket} = State) ->
     PeerNameReply = inet:peername(Socket),
@@ -1530,7 +1533,7 @@ next_protocol(#state{next_protocol = undefined} = State) ->
     State;
 next_protocol(#state{expecting_next_protocol_negotiation = false} = State) ->
     State;
-next_protocol(#state{transport_cb = Transport, socket = Socket, negotiated_version = Version, next_protocol = NextProtocol, connection_states = ConnectionStates0, tls_handshake_hashes = Hashes0} = State) ->
+next_protocol(#state{transport_cb = Transport, socket = Socket, negotiated_version = Version, next_protocol = {_, NextProtocol}, connection_states = ConnectionStates0, tls_handshake_hashes = Hashes0} = State) ->
     NextProtocolMessage = ssl_handshake:next_protocol(NextProtocol),
     {BinMsg, ConnectionStates, Hashes} = encode_handshake(NextProtocolMessage, Version, ConnectionStates0, Hashes0),
     Transport:send(Socket, BinMsg),
@@ -2382,3 +2385,8 @@ get_timeout(#state{ssl_options=#ssl_options{hibernate_after=undefined}}) ->
     infinity;
 get_timeout(#state{ssl_options=#ssl_options{hibernate_after=HibernateAfter}}) ->
     HibernateAfter.
+
+fallback_atom(false) ->
+  fallback;
+fallback_atom(_) ->
+  negotiated.

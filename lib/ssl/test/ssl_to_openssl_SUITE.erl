@@ -1529,7 +1529,7 @@ start_erlang_client_and_openssl_server_for_npn_negotiation(Config, Data, Callbac
                     {host, Hostname},
                     {from, self()},
                     {mfa, {?MODULE,
-                           erlang_ssl_receive_and_assert_npn, [<<"spdy/2">>, Data]}},
+                        erlang_ssl_receive_and_assert_npn, [{ok, negotiated, <<"spdy/2">>}, Data]}},
                     {options, ClientOpts}]),
 
     Callback(Client, OpensslPort),
@@ -1550,7 +1550,7 @@ start_erlang_server_and_openssl_client_for_npn_negotiation(Config, Data, Callbac
 
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
                     {from, self()},
-                    {mfa, {?MODULE, erlang_ssl_receive_and_assert_npn, [<<"spdy/2">>, Data]}},
+                    {mfa, {?MODULE, erlang_ssl_receive_and_assert_npn, [{ok, negotiated, <<"spdy/2">>}, Data]}},
                     {options, ServerOpts}]),
     Port = ssl_test_lib:inet_port(Server),
 
@@ -1597,10 +1597,10 @@ start_erlang_server_and_openssl_client_with_opts(Config, ErlangServerOpts, OpenS
     process_flag(trap_exit, false).
 
 
-erlang_ssl_receive_and_assert_npn(Socket, Protocol, Data) ->
-    {ok, Protocol} = ssl:negotiated_next_protocol(Socket),
+erlang_ssl_receive_and_assert_npn(Socket, Npn, Data) ->
+    Npn = ssl:negotiated_next_protocol(Socket),
     erlang_ssl_receive(Socket, Data),
-    {ok, Protocol} = ssl:negotiated_next_protocol(Socket),
+    Npn = ssl:negotiated_next_protocol(Socket),
     ok.
 
 erlang_ssl_receive(Socket, Data) ->

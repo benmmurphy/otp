@@ -68,50 +68,58 @@ perform_client_does_not_try_to_negotiate_but_server_supports_npn_test(Config) ->
     run_npn_handshake_test(Config,
         [],
         [{next_protocols_advertised, [<<"spdy/1">>, <<"http/1.1">>, <<"http/1.0">>]}],
+        {error, next_protocol_not_negotiated},
         {error, next_protocol_not_negotiated}).
 
 perform_client_tries_to_negotiate_but_server_does_not_support_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {client, [<<"spdy/2">>], <<"http/1.1">>}}],
         [],
+        {error, next_protocol_not_negotiated},
         {error, next_protocol_not_negotiated}).
 
 perform_fallback_npn_handshake_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {client, [<<"spdy/2">>], <<"http/1.1">>}}],
         [{next_protocols_advertised, [<<"spdy/1">>, <<"http/1.1">>, <<"http/1.0">>]}],
-        {ok, <<"http/1.1">>}).
+        {ok, fallback, <<"http/1.1">>},
+        {ok, negotiated, <<"http/1.1">>}).
         
 perform_fallback_npn_handshake_implicit_fallback_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {client, [<<"spdy/2">>]}}],
         [{next_protocols_advertised, [<<"spdy/1">>, <<"http/1.1">>, <<"http/1.0">>]}],
-        {ok, <<"spdy/2">>}).
+        {ok, fallback, <<"spdy/2">>},
+        {ok, negotiated, <<"spdy/2">>}).
 
 perform_fallback_npn_handshake_server_preference_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {server, [<<"http/1.1">>, <<"spdy/2">>]}}],
         [{next_protocols_advertised, [<<"spdy/1">>,  <<"http/1.0">>]}],
-        {ok, <<"http/1.1">>}).
+        {ok, fallback, <<"http/1.1">>},
+        {ok, negotiated, <<"http/1.1">>}).
         
 perform_fallback_npn_handshake_server_preference_explicit_fallback_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {server, [<<"spdy/2">>], <<"http/1.1">>}}],
         [{next_protocols_advertised, [<<"spdy/1">>,  <<"http/1.0">>]}],
-        {ok, <<"http/1.1">>}).
+        {ok, fallback, <<"http/1.1">>},
+        {ok, negotiated, <<"http/1.1">>}).
 
 
 perform_normal_npn_handshake_client_preference_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {client, [<<"http/1.0">>, <<"http/1.1">>], <<"http/1.1">>}}],
         [{next_protocols_advertised, [<<"spdy/2">>, <<"http/1.1">>, <<"http/1.0">>]}],
-        {ok, <<"http/1.0">>}).
+        {ok, negotiated, <<"http/1.0">>},
+        {ok, negotiated, <<"http/1.0">>}).
 
 perform_normal_npn_handshake_server_preference_test(Config) ->
     run_npn_handshake_test(Config,
         [{client_preferred_next_protocols, {server, [<<"http/1.0">>, <<"http/1.1">>]}}],
         [{next_protocols_advertised, [<<"spdy/2">>, <<"http/1.1">>, <<"http/1.0">>]}],
-        {ok, <<"http/1.1">>}).
+        {ok, negotiated, <<"http/1.1">>},
+        {ok, negotiated, <<"http/1.1">>}).
 
 
 perform_renegotiate_from_client_after_npn_handshake(Config) ->
@@ -121,8 +129,8 @@ perform_renegotiate_from_client_after_npn_handshake(Config) ->
     ClientOpts = [{client_preferred_next_protocols, {client, [<<"http/1.0">>], <<"http/1.1">>}}] ++ ClientOpts0,
     ServerOpts0 = ?config(server_opts, Config),
     ServerOpts = [{next_protocols_advertised, [<<"spdy/2">>, <<"http/1.1">>, <<"http/1.0">>]}] ++  ServerOpts0,
-    ExpectedProtocol = {ok, <<"http/1.0">>},
-
+    ExpectedProtocol = {ok, negotiated, <<"http/1.0">>},
+    
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
                     {from, self()},
@@ -140,7 +148,7 @@ perform_renegotiate_from_client_after_npn_handshake(Config) ->
 
 %--------------------------------------------------------------------------------
 
-run_npn_handshake_test(Config, ClientExtraOpts, ServerExtraOpts, ExpectedProtocol) ->
+run_npn_handshake_test(Config, ClientExtraOpts, ServerExtraOpts, ExpectedProtocol, ServerExpectedProtocol) ->
     Data = "hello world",
 
     ClientOpts0 = ?config(client_opts, Config),
@@ -151,7 +159,7 @@ run_npn_handshake_test(Config, ClientExtraOpts, ServerExtraOpts, ExpectedProtoco
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
                     {from, self()},
-                    {mfa, {?MODULE, ssl_receive_and_assert_npn, [ExpectedProtocol, Data]}},
+                    {mfa, {?MODULE, ssl_receive_and_assert_npn, [ServerExpectedProtocol, Data]}},
                     {options, ServerOpts}]),
 
     Port = ssl_test_lib:inet_port(Server),
