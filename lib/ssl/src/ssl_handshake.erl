@@ -99,7 +99,7 @@ encode_protocols_advertised_on_server(Protocols) ->
 
 %%--------------------------------------------------------------------
 -spec server_hello(session_id(), tls_version(), #connection_states{}, 
-		   boolean(), list(string())) -> #server_hello{}.
+           boolean(), [string()]) -> #server_hello{}.
 %%
 %% Description: Creates a server hello message.
 %%--------------------------------------------------------------------
@@ -132,7 +132,7 @@ hello_request() ->
 				    atom(), #connection_states{}, binary()},
 	    boolean()) ->
 			  {tls_version(), session_id(), #connection_states{}, binary() | undefined}|
-			  {tls_version(), {resumed | new, #session{}}, #connection_states{}, list(binary()) | undefined} |
+			  {tls_version(), {resumed | new, #session{}}, #connection_states{}, [binary()] | undefined} |
 			  #alert{}.
 %%
 %% Description: Handles a recieved hello message
