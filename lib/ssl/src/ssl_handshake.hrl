@@ -90,7 +90,7 @@
 	  cipher_suites,      % cipher_suites<2..2^16-1>
 	  compression_methods, % compression_methods<1..2^8-1>,
 	  renegotiation_info,
-	  next_protocol_negotiation = undefined :: undefined | list(binary())
+	  next_protocol_negotiation = undefined :: undefined | [binary()]
 	 }).
 
 -record(server_hello, {
@@ -100,7 +100,7 @@
 	  cipher_suite,       % cipher_suites
 	  compression_method, % compression_method
 	  renegotiation_info,
-	  next_protocol_negotiation = undefined :: undefined | list(binary())
+	  next_protocol_negotiation = undefined :: undefined | [binary()]
 	 }).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

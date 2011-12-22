@@ -59,8 +59,8 @@
                         {cacertfile, path()} | {dh, Der::binary()} | {dhfile, path()} |
                         {ciphers, ciphers()} | {ssl_imp, ssl_imp()} | {reuse_sessions, boolean()} |
                         {reuse_session, fun()} | {hibernate_after, integer()|undefined} |
-                        {next_protocols_advertised, list(binary())} |
-                        {client_preferred_next_protocols, binary(), client | server, list(binary())}.
+                        {next_protocols_advertised, [binary()]} |
+                        {client_preferred_next_protocols, binary(), client | server, [binary()]}.
 
 -type verify_type()  :: verify_none | verify_peer.
 -type path()         :: string().
