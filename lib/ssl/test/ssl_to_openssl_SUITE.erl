@@ -1165,7 +1165,7 @@ erlang_client_openssl_server_npn_negotiate_only_on_server(Config) when is_list(C
 
 erlang_client_openssl_server_npn_negotiate_only_on_client(Config) when is_list(Config) ->
     Data = "From openssl to erlang",
-    start_erlang_client_and_openssl_server_with_opts(Config, [{client_preferred_next_protocols, {<<"http/1.1">>, client, [<<"spdy/2">>]}}], "", Data, fun(Server, OpensslPort) ->
+    start_erlang_client_and_openssl_server_with_opts(Config, [{client_preferred_next_protocols, {client, [<<"spdy/2">>], <<"http/1.1">>}}], "", Data, fun(Server, OpensslPort) ->
         port_command(OpensslPort, Data),
         ssl_test_lib:check_result(Server, ok)
     end),
@@ -1232,7 +1232,7 @@ start_erlang_client_and_openssl_server_for_npn_negotiation(Config, Data, Callbac
     process_flag(trap_exit, true),
     ServerOpts = ?config(server_opts, Config),
     ClientOpts0 = ?config(client_opts, Config),
-    ClientOpts = [{client_preferred_next_protocols, {<<"http/1.1">>, client, [<<"spdy/2">>]}} | ClientOpts0],
+    ClientOpts = [{client_preferred_next_protocols, {client, [<<"spdy/2">>], <<"http/1.1">>}} | ClientOpts0],
 
     {ClientNode, _, Hostname} = ssl_test_lib:run_where(Config),
 

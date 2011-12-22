@@ -67,7 +67,8 @@
                         {ciphers, ciphers()} | {ssl_imp, ssl_imp()} | {reuse_sessions, boolean()} |
                         {reuse_session, fun()} | {hibernate_after, integer()|undefined} |
                         {next_protocols_advertised, [binary()]} |
-                        {client_preferred_next_protocols, binary(), client | server, [binary()]}.
+                        {client_preferred_next_protocols, {client | server, [binary()], binary()}} |
+                        {client_preferred_next_protocols, {client | server, [binary()]}}.
 
 -type verify_type()  :: verify_none | verify_peer.
 -type path()         :: string().
@@ -744,11 +745,16 @@ validate_option(hibernate_after, Value) when is_integer(Value), Value >= 0 ->
 validate_option(erl_dist,Value) when Value == true; 
 				     Value == false ->
     Value;
-validate_option(client_preferred_next_protocols, {FallbackProtocol, Order, PreferredProtocols} = Value)
+validate_option(client_preferred_next_protocols, {Ordering, PreferredProtocols} = Value)
+      when is_list(PreferredProtocols), length(PreferredProtocols) > 0 ->
+    validate_binary_list(client_preferred_next_protocols, PreferredProtocols),
+    validate_npn_ordering(Ordering),
+    Value;
+validate_option(client_preferred_next_protocols, {Ordering, PreferredProtocols, FallbackProtocol} = Value)
       when is_list(PreferredProtocols), is_binary(FallbackProtocol),
            byte_size(FallbackProtocol) > 0, byte_size(FallbackProtocol) < 256 ->
     validate_binary_list(client_preferred_next_protocols, PreferredProtocols),
-    validate_npn_ordering(Order),
+    validate_npn_ordering(Ordering),
     Value;
 validate_option(client_preferred_next_protocols, undefined) ->
     undefined;
@@ -766,7 +772,7 @@ validate_npn_ordering(server) ->
     ok;
 validate_npn_ordering(Value) ->
     throw({error, {eoptions, {client_preferred_next_protocols, Value}}}).
-
+	
 validate_binary_list(Opt, List) ->
     lists:foreach(
         fun(Bin) when is_binary(Bin),
@@ -895,15 +901,18 @@ detect(Pred, [H|T]) ->
 
 make_next_protocol_selector(undefined) ->
     undefined;
-make_next_protocol_selector({FallbackProtocol, client, AllProtocols}) ->
+make_next_protocol_selector({client, AllProtocols}) ->
+    make_next_protocol_selector({client, AllProtocols, hd(AllProtocols)});
+make_next_protocol_selector({client, AllProtocols, FallbackProtocol}) ->
     fun(AdvertisedProtocols) ->
         case detect(fun(PreferredProtocol) -> lists:member(PreferredProtocol, AdvertisedProtocols) end, AllProtocols) of
             undefined -> FallbackProtocol;
             PreferredProtocol -> PreferredProtocol
         end
     end;
-
-make_next_protocol_selector({FallbackProtocol, server, AllProtocols}) ->
+make_next_protocol_selector({server, AllProtocols}) ->
+    make_next_protocol_selector({server, AllProtocols, hd(AllProtocols)});
+make_next_protocol_selector({server, AllProtocols, FallbackProtocol}) ->
     fun(AdvertisedProtocols) ->
         case detect(fun(PreferredProtocol) -> lists:member(PreferredProtocol, AllProtocols) end, AdvertisedProtocols) of
             undefined -> FallbackProtocol;
