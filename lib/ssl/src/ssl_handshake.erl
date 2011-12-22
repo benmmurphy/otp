@@ -138,38 +138,28 @@ hello_request() ->
 %% Description: Handles a recieved hello message
 %%--------------------------------------------------------------------
 hello(#server_hello{cipher_suite = CipherSuite, server_version = Version,
-		    compression_method = Compression, random = Random,
-		    renegotiation_info = Info,
-		    session_id = SessionId} = Hello,
-      #ssl_options{secure_renegotiate = SecureRenegotation, next_protocol_selector = NextProtocolSelector},
-      ConnectionStates0, Renegotiation) ->
+			compression_method = Compression, random = Random,
+			session_id = SessionId} = Hello,
+			SslOptions,
+			ConnectionStates0, Renegotiation) ->
 
-    case ssl_record:is_acceptable_version(Version) of
+	case ssl_record:is_acceptable_version(Version) of
 	true ->
-	    case handle_renegotiation_info(client, Info, ConnectionStates0, 
-					   Renegotiation, SecureRenegotation, []) of
-		{ok, ConnectionStates1} ->
-		    ConnectionStates =
-			hello_pending_connection_states(client, CipherSuite, Random, 
-							Compression, ConnectionStates1),
-			case handle_next_protocol(Hello, NextProtocolSelector, Renegotiation) of
-			    #alert{} = Alert ->
-			        Alert;
-			    Protocol ->
-			        {Version, SessionId, ConnectionStates, Protocol}
-			end;
-		#alert{} = Alert ->
-		    Alert
-	    end;
+		case handle_server_hello_extensions(Hello, SslOptions, ConnectionStates0, Renegotiation) of
+			#alert{} = Alert ->
+				Alert;
+			{ok, ConnectionStates1, Protocol} ->
+				ConnectionStates =
+					hello_pending_connection_states(client, CipherSuite, Random, 
+								Compression, ConnectionStates1),
+				{Version, SessionId, ConnectionStates, Protocol}
+		end;
 	false ->
 	    ?ALERT_REC(?FATAL, ?PROTOCOL_VERSION)
     end;
 			       
-hello(#client_hello{client_version = ClientVersion, random = Random,
-		    cipher_suites = CipherSuites,
-		    renegotiation_info = Info} = Hello,
-      #ssl_options{versions = Versions,
-		   secure_renegotiate = SecureRenegotation} = SslOpts,
+hello(#client_hello{client_version = ClientVersion, random = Random} = Hello,
+      #ssl_options{versions = Versions} = SslOpts,
       {Port, Session0, Cache, CacheCb, ConnectionStates0, Cert}, Renegotiation) ->
     Version = select_version(ClientVersion, Versions),
     case ssl_record:is_acceptable_version(Version) of
@@ -182,29 +172,60 @@ hello(#client_hello{client_version = ClientVersion, random = Random,
 		no_suite ->
 		    ?ALERT_REC(?FATAL, ?INSUFFICIENT_SECURITY);
 		_ ->
-		    case handle_renegotiation_info(server, Info, ConnectionStates0,
-						   Renegotiation, SecureRenegotation, 
-						   CipherSuites) of
-			{ok, ConnectionStates1} ->
-			    ConnectionStates =
-				hello_pending_connection_states(server, 
+			case handle_client_hello_extensions(Hello, SslOpts, ConnectionStates0, Renegotiation) of
+				#alert{} = Alert ->
+					Alert;
+				{ok, ConnectionStates1, ProtocolsToAdvertise} ->
+					ConnectionStates = hello_pending_connection_states(server, 
 								CipherSuite,
 								Random, 
 								Compression,
 								ConnectionStates1),
-				case handle_next_protocol_on_server(Hello, Renegotiation, SslOpts) of
-					#alert{} = Alert ->
-						Alert;
-					ProtocolsToAdvertise ->
-						{Version, {Type, Session}, ConnectionStates, ProtocolsToAdvertise}
-			    end;
-			#alert{} = Alert ->
-			    Alert
+					{Version, {Type, Session}, ConnectionStates, ProtocolsToAdvertise}
 		    end
 	    end;
 	false ->
 	    ?ALERT_REC(?FATAL, ?PROTOCOL_VERSION)
     end.
+
+handle_client_hello_extensions(
+	#client_hello{renegotiation_info = Info, cipher_suites = CipherSuites} = Hello,
+	#ssl_options{secure_renegotiate = SecureRenegotation} = SslOpts,
+	ConnectionStates0,
+	Renegotiation) ->
+
+	case handle_renegotiation_info(server, Info, ConnectionStates0,
+				   Renegotiation, SecureRenegotation, 
+				   CipherSuites) of
+	{ok, ConnectionStates} ->
+		case handle_next_protocol_on_server(Hello, Renegotiation, SslOpts) of
+			#alert{} = Alert ->
+				Alert;
+			ProtocolsToAdvertise ->
+				{ok, ConnectionStates, ProtocolsToAdvertise}
+	    end;
+	#alert{} = Alert ->
+	    Alert
+	end.
+
+handle_server_hello_extensions(
+	#server_hello{renegotiation_info = Info} = Hello,
+	#ssl_options{secure_renegotiate = SecureRenegotation, next_protocol_selector = NextProtocolSelector},
+	ConnectionStates0,
+	Renegotiation) ->
+				
+	case handle_renegotiation_info(client, Info, ConnectionStates0, 
+				   Renegotiation, SecureRenegotation, []) of
+	{ok, ConnectionStates} ->
+		case handle_next_protocol(Hello, NextProtocolSelector, Renegotiation) of
+			#alert{} = Alert ->
+				Alert;
+			Protocol ->
+				{ok, ConnectionStates, Protocol}
+		end;
+	#alert{} = Alert ->
+		 Alert
+	end.
 
 %%--------------------------------------------------------------------
 -spec certify(#certificate{}, db_handle(), certdb_ref(), integer() | nolimit,
