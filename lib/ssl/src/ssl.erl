@@ -61,7 +61,8 @@
                         {reuse_session, fun()} | {hibernate_after, integer()|undefined} |
                         {next_protocols_advertised, [binary()]} |
                         {client_preferred_next_protocols, {client | server, [binary()], binary() | no_fallback}} |
-                        {client_preferred_next_protocols, {client | server, [binary()]}}.
+                        {client_preferred_next_protocols, {client | server, [binary()]}} | 
+                        {require_server_to_support_next_protocol_negotiation, boolean()}.
 
 -type verify_type()  :: verify_none | verify_peer.
 -type path()         :: string().
@@ -554,7 +555,8 @@ handle_options(Opts0, _Role) ->
       hibernate_after = handle_option(hibernate_after, Opts, undefined),
       erl_dist = handle_option(erl_dist, Opts, false),
       next_protocols_advertised = handle_option(next_protocols_advertised, Opts, undefined),
-      next_protocol_selector = make_next_protocol_selector(handle_option(client_preferred_next_protocols, Opts, undefined))
+      next_protocol_selector = make_next_protocol_selector(handle_option(client_preferred_next_protocols, Opts, undefined)),
+      require_next_protocol_negotiation = handle_option(require_server_to_support_next_protocol_negotiation, Opts, false)
      },
 
     CbInfo  = proplists:get_value(cb_info, Opts, {gen_tcp, tcp, tcp_closed, tcp_error}),    
@@ -564,7 +566,7 @@ handle_options(Opts0, _Role) ->
 		  password, cacerts, cacertfile, dh, dhfile, ciphers,
 		  debug, reuse_session, reuse_sessions, ssl_imp,
 		  cb_info, renegotiate_at, secure_renegotiate, hibernate_after, erl_dist, next_protocols_advertised,
-		  client_preferred_next_protocols],
+		  client_preferred_next_protocols, require_server_to_support_next_protocol_negotiation],
     
     SockOpts = lists:foldl(fun(Key, PropList) -> 
 				   proplists:delete(Key, PropList)
@@ -696,6 +698,8 @@ validate_option(next_protocols_advertised, Value) when is_list(Value) ->
     Value;
 validate_option(next_protocols_advertised, undefined) ->
     undefined;
+validate_option(require_server_to_support_next_protocol_negotiation, Option) when is_boolean(Option) ->
+	Option;
 validate_option(Opt, Value) ->
     throw({error, {eoptions, {Opt, Value}}}).
 
