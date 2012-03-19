@@ -144,7 +144,9 @@ hello(#server_hello{cipher_suite = CipherSuite, server_version = Version,
 		    compression_method = Compression, random = Random,
 		    session_id = SessionId, renegotiation_info = Info,
 		    hash_signs = _HashSigns} = Hello,
-      #ssl_options{secure_renegotiate = SecureRenegotation, next_protocol_selector = NextProtocolSelector},
+      #ssl_options{secure_renegotiate = SecureRenegotation, 
+                   next_protocol_selector = NextProtocolSelector,
+                   require_next_protocol_negotiation = RequireNegotiation},
       ConnectionStates0, Renegotiation) ->
 %%TODO: select hash and signature algorigthm
     case ssl_record:is_acceptable_version(Version) of
@@ -155,7 +157,7 @@ hello(#server_hello{cipher_suite = CipherSuite, server_version = Version,
 		    ConnectionStates =
 			hello_pending_connection_states(client, Version, CipherSuite, Random,
 							Compression, ConnectionStates1),
-			case handle_next_protocol(Hello, NextProtocolSelector, Renegotiation) of
+			case handle_next_protocol(Hello, NextProtocolSelector, Renegotiation, RequireNegotiation) of
 			    #alert{} = Alert ->
 			        Alert;
 			    Protocol ->
@@ -722,11 +724,15 @@ handle_next_protocol_on_server(_Hello, _Renegotiation, _SSLOpts) ->
     ?ALERT_REC(?FATAL, ?HANDSHAKE_FAILURE). % unexpected next protocol extension
 
 handle_next_protocol(#server_hello{next_protocol_negotiation = undefined},
-    _NextProtocolSelector, _Renegotiating) ->
+    _NextProtocolSelector, false, true) ->
+    ?ALERT_REC(?FATAL, ?HANDSHAKE_FAILURE); % server did not send next protocol extension but we require it
+
+handle_next_protocol(#server_hello{next_protocol_negotiation = undefined},
+    _NextProtocolSelector, _Renegotiating, _RequireNegotiation) ->
     undefined;
 
 handle_next_protocol(#server_hello{next_protocol_negotiation = Protocols},
-    NextProtocolSelector, Renegotiating) ->
+    NextProtocolSelector, Renegotiating, _RequireNegotiation) ->
 
     case next_protocol_extension_allowed(NextProtocolSelector, Renegotiating) of
         true ->

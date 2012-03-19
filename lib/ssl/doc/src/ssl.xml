@@ -318,14 +318,21 @@ fun(OtpCert :: #'OTPCertificate'{}, Event :: {bad_cert, Reason :: atom()} |
       will be the first protocol that appears on the server's advertised list that is
       also on the <c>ClientPrefs</c> list.</p>
       
+
+
       <p>The Next Protocol specification recommends clients SHOULD use <c>server</c> precedence and fallback to the first protocol 
       in the <c>ClientPrefs</c> list.</p>
       
       <p>If the client negotiates a Next Protocol it can be accessed using the <c>negotiated_next_protocol/1</c> method.</p>
       </item>
-    
 
+      <tag>{require_server_to_support_next_protocol_negotiation, RequireNegotiation :: boolean()}</tag>
+      <item>
+        <p>If the <c>RequireNegotiation</c> option is set to <c>true</c> then the client will abort the connection if the server
+      does not support Next Protocol Negotiation. This option is non-standard behaviour.</p>
+      </item>
    </taglist>
+
   </section>
 
   <section>

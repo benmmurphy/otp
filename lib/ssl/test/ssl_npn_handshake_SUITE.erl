@@ -39,7 +39,8 @@ all() ->
      perform_client_tries_to_negotiate_but_server_does_not_support_test,
      perform_client_does_not_try_to_negotiate_but_server_supports_npn_test,
      perform_renegotiate_from_client_after_npn_handshake,
-     perform_no_fallback_npn_handshake_test].
+     perform_no_fallback_npn_handshake_test,
+     perform_require_npn_handshake_test].
 
 connection_info_result(Socket) ->
     ssl:connection_info(Socket).
@@ -167,6 +168,26 @@ perform_no_fallback_npn_handshake_test(Config) ->
                {options, ClientOpts}]),
 
     ssl_test_lib:check_result(Client, {error, esslconnect}).
+
+perform_require_npn_handshake_test(Config) ->
+    ClientOpts0 = ?config(client_opts, Config),
+    ClientOpts = [{require_server_to_support_next_protocol_negotiation, true}, {client_preferred_next_protocols, {client, [<<"http/1.0">>], <<"http/1.0">>}}] ++ ClientOpts0,
+    ServerOpts0 = ?config(server_opts, Config),
+    ServerOpts = [] ++  ServerOpts0,
+    
+    {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
+    Server = ssl_test_lib:start_server_error([{node, ServerNode}, {port, 0},
+                    {from, self()},
+                    {options, ServerOpts}]),
+
+    Port = ssl_test_lib:inet_port(Server),
+    Client = ssl_test_lib:start_client_error([{node, ClientNode}, {port, Port},
+               {host, Hostname},
+               {from, self()},
+               {options, ClientOpts}]),
+
+    ssl_test_lib:check_result(Client, {error, esslconnect}).
+
 
 %--------------------------------------------------------------------------------
 

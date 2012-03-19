@@ -108,7 +108,8 @@
 	  %% This option should only be set to true by inet_tls_dist
 	  erl_dist = false,
 	  next_protocols_advertised = undefined :: list(binary()),
-	  next_protocol_selector = undefined :: fun((list(binary())) -> binary())
+	  next_protocol_selector = undefined :: fun((list(binary())) -> binary()),
+	  require_next_protocol_negotiation = false :: boolean()
 	  }).
 
 -record(socket_options,
