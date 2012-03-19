@@ -67,7 +67,7 @@
                         {ciphers, ciphers()} | {ssl_imp, ssl_imp()} | {reuse_sessions, boolean()} |
                         {reuse_session, fun()} | {hibernate_after, integer()|undefined} |
                         {next_protocols_advertised, [binary()]} |
-                        {client_preferred_next_protocols, {client | server, [binary()], binary()}} |
+                        {client_preferred_next_protocols, {client | server, [binary()], binary() | no_fallback}} |
                         {client_preferred_next_protocols, {client | server, [binary()]}}.
 
 -type verify_type()  :: verify_none | verify_peer.
@@ -750,9 +750,8 @@ validate_option(client_preferred_next_protocols, {Ordering, PreferredProtocols} 
     validate_binary_list(client_preferred_next_protocols, PreferredProtocols),
     validate_npn_ordering(Ordering),
     Value;
-validate_option(client_preferred_next_protocols, {Ordering, PreferredProtocols, FallbackProtocol} = Value)
-      when is_list(PreferredProtocols), is_binary(FallbackProtocol),
-           byte_size(FallbackProtocol) > 0, byte_size(FallbackProtocol) < 256 ->
+validate_option(client_preferred_next_protocols, {Ordering, PreferredProtocols, FallbackProtocol} = Value) ->
+	validate_fallback_protocol(FallbackProtocol),
     validate_binary_list(client_preferred_next_protocols, PreferredProtocols),
     validate_npn_ordering(Ordering),
     Value;
@@ -766,6 +765,14 @@ validate_option(next_protocols_advertised, undefined) ->
 validate_option(Opt, Value) ->
     throw({error, {eoptions, {Opt, Value}}}).
 
+validate_fallback_protocol(FallbackProtocol) when is_binary(FallbackProtocol),
+           byte_size(FallbackProtocol) > 0, byte_size(FallbackProtocol) < 256 ->
+    FallbackProtocol;
+validate_fallback_protocol(no_fallback) ->
+	no_fallback;
+validate_fallback_protocol(Value) ->
+	throw({error, {eoptions, {client_preferred_next_protocols, Value}}}).
+	
 validate_npn_ordering(client) ->
     ok;
 validate_npn_ordering(server) ->
@@ -906,7 +913,7 @@ make_next_protocol_selector({client, AllProtocols}) ->
 make_next_protocol_selector({client, AllProtocols, FallbackProtocol}) ->
     fun(AdvertisedProtocols) ->
         case detect(fun(PreferredProtocol) -> lists:member(PreferredProtocol, AdvertisedProtocols) end, AllProtocols) of
-            undefined -> {false, FallbackProtocol};
+            undefined -> select_fallback(FallbackProtocol);
             PreferredProtocol -> {true, PreferredProtocol}
         end
     end;
@@ -915,11 +922,16 @@ make_next_protocol_selector({server, AllProtocols}) ->
 make_next_protocol_selector({server, AllProtocols, FallbackProtocol}) ->
     fun(AdvertisedProtocols) ->
         case detect(fun(PreferredProtocol) -> lists:member(PreferredProtocol, AllProtocols) end, AdvertisedProtocols) of
-            undefined -> {false, FallbackProtocol};
+            undefined -> select_fallback(FallbackProtocol);
             PreferredProtocol -> {true, PreferredProtocol}
         end
     end.
-                                
+
+select_fallback(no_fallback) ->
+	{false, <<>>};
+select_fallback(FallbackProtocol) ->
+	{false, FallbackProtocol}.
+	                              
 %% Only used to remove exit messages from old ssl
 %% First is a nonsense clause to provide some
 %% backward compatibility for orber that uses this

@@ -742,7 +742,7 @@ select_next_protocol(Protocols, NextProtocolSelector) ->
       {InPreferenceList, Protocol} = ProtocolPair when is_binary(Protocol), byte_size(Protocol) > 0, byte_size(Protocol) < 256, is_boolean(InPreferenceList) ->
           ProtocolPair;
       _ ->
-          ?ALERT_REC(?FATAL, ?INTERNAL_ERROR) % we are broken internally :( api presently stops this but we might let it happen in future
+          ?ALERT_REC(?FATAL, ?HANDSHAKE_FAILURE) % no_fallback will cause an empty binary to be returned which will cause this function to blow up
     end.
 
 handle_renegotiation_info(_, #renegotiation_info{renegotiated_connection = ?byte(0)}, 
