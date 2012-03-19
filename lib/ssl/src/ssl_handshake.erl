@@ -210,14 +210,14 @@ handle_client_hello_extensions(
 
 handle_server_hello_extensions(
 	#server_hello{renegotiation_info = Info} = Hello,
-	#ssl_options{secure_renegotiate = SecureRenegotation, next_protocol_selector = NextProtocolSelector},
+	#ssl_options{secure_renegotiate = SecureRenegotation, next_protocol_selector = NextProtocolSelector, require_next_protocol_negotiation = RequireNegotiation},
 	ConnectionStates0,
 	Renegotiation) ->
 				
 	case handle_renegotiation_info(client, Info, ConnectionStates0, 
 				   Renegotiation, SecureRenegotation, []) of
 	{ok, ConnectionStates} ->
-		case handle_next_protocol(Hello, NextProtocolSelector, Renegotiation) of
+		case handle_next_protocol(Hello, NextProtocolSelector, Renegotiation, RequireNegotiation) of
 			#alert{} = Alert ->
 				Alert;
 			Protocol ->
@@ -724,11 +724,15 @@ handle_next_protocol_on_server(_Hello, _Renegotiation, _SSLOpts) ->
     ?ALERT_REC(?FATAL, ?HANDSHAKE_FAILURE). % unexpected next protocol extension
 
 handle_next_protocol(#server_hello{next_protocol_negotiation = undefined},
-    _NextProtocolSelector, _Renegotiating) ->
+    _NextProtocolSelector, false, true) ->
+    ?ALERT_REC(?FATAL, ?HANDSHAKE_FAILURE); % server did not send next protocol extension but we require it
+
+handle_next_protocol(#server_hello{next_protocol_negotiation = undefined},
+    _NextProtocolSelector, _Renegotiating, _RequireNegotiation) ->
     undefined;
 
 handle_next_protocol(#server_hello{next_protocol_negotiation = Protocols},
-    NextProtocolSelector, Renegotiating) ->
+    NextProtocolSelector, Renegotiating, _RequireNegotiation) ->
 
     case next_protocol_extension_allowed(NextProtocolSelector, Renegotiating) of
         true ->
