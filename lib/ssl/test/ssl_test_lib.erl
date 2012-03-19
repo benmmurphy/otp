@@ -201,7 +201,7 @@ check_result(Server, ServerMsg, Client, ClientMsg) ->
 		{Server, ServerMsg} ->
 		    ok;
 		Unexpected ->
-		    Reason = {{expected, {Server, ClientMsg}}, 
+		    Reason = {{expected, {Server, ServerMsg}}, 
 			      {got, Unexpected}},
 		    test_server:fail(Reason)
 	    end;
