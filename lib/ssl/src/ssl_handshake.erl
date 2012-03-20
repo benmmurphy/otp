@@ -162,31 +162,38 @@ hello(#client_hello{client_version = ClientVersion, random = Random} = Hello,
       #ssl_options{versions = Versions} = SslOpts,
       {Port, Session0, Cache, CacheCb, ConnectionStates0, Cert}, Renegotiation) ->
     Version = select_version(ClientVersion, Versions),
-    case ssl_record:is_acceptable_version(Version) of
-	true ->
-	    {Type, #session{cipher_suite = CipherSuite,
-			    compression_method = Compression} = Session} 
-		= select_session(Hello, Port, Session0, Version, 
-				 SslOpts, Cache, CacheCb, Cert),
-	    case CipherSuite of 
-		no_suite ->
-		    ?ALERT_REC(?FATAL, ?INSUFFICIENT_SECURITY);
-		_ ->
-			case handle_client_hello_extensions(Hello, SslOpts, ConnectionStates0, Renegotiation) of
-				#alert{} = Alert ->
-					Alert;
-				{ok, ConnectionStates1, ProtocolsToAdvertise} ->
-					ConnectionStates = hello_pending_connection_states(server, 
-								CipherSuite,
-								Random, 
-								Compression,
-								ConnectionStates1),
-					{Version, {Type, Session}, ConnectionStates, ProtocolsToAdvertise}
-		    end
-	    end;
-	false ->
-	    ?ALERT_REC(?FATAL, ?PROTOCOL_VERSION)
-    end.
+    
+    TypeAndSession = case ssl_record:is_acceptable_version(Version) of
+        true ->
+            select_session(Hello, Port, Session0, Version, SslOpts, Cache, CacheCb, Cert);
+        false ->
+            ?ALERT_REC(?FATAL, ?PROTOCOL_VERSION)
+    end,
+
+    case TypeAndSession of 
+        #alert{} = Alert -> 
+            Alert;
+
+        {_Type, #session{cipher_suite = CipherSuite}} when CipherSuite =:= no_suite ->
+            ?ALERT_REC(?FATAL, ?INSUFFICIENT_SECURITY);
+        {Type, #session{cipher_suite = CipherSuite, compression_method = Compression} = Session} ->
+            case handle_client_hello_extensions(Hello, SslOpts, ConnectionStates0, Renegotiation) of
+                #alert{} = Alert ->
+                    Alert;
+                {ok, ConnectionStates1, ProtocolsToAdvertise} ->
+                    ConnectionStates = hello_pending_connection_states(server, 
+                        CipherSuite,
+                        Random, 
+                        Compression,
+                        ConnectionStates1),
+                    {Version, {Type, Session}, ConnectionStates, ProtocolsToAdvertise}
+            end    
+	end.
+
+
+		
+
+
 
 handle_client_hello_extensions(
 	#client_hello{renegotiation_info = Info, cipher_suites = CipherSuites} = Hello,
